@@ -56,6 +56,7 @@ fin.onchange = function(e) {
     // upload.start()
 }
 
+// ws = new WebSocket(`ws://35.186.181.47:8015/ws`);
 ws = new WebSocket(`ws://localhost:8015/ws`);
 ws.onmessage = function(e) {
     var message = JSON.parse(e.data);
@@ -74,7 +75,7 @@ ws.onmessage = function(e) {
             data: data,
             offset: readRequest.offset,
         };
-        console.log(`sending data ${data} ${data.length}`);
+        console.log(`sending data ${data.length}`);
         ws.send(JSON.stringify(readResponse));
     }
     console.log(`load requested for bytes ${readRequest.offset} - ${readRequest.offset + readRequest.length} with length ${readRequest.length}`)
