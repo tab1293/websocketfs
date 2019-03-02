@@ -8,6 +8,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo"
@@ -124,31 +126,44 @@ func CopyFileToDisk(f *File) error {
 
 	var off int64 = 0
 	numParts := 3
+	start := time.Now()
 
+	var wg sync.WaitGroup
 	for i := 0; i < numParts; i++ {
 		partSize := f.Size / int64(numParts)
 		if i+1 == numParts {
 			partSize = f.Size - off
 		}
 
-		log.Printf("reading at %d-%d size %d\n", off, off+partSize, partSize)
-		b := make([]byte, partSize)
-		n, err := f.ReadAt(b, off)
-		if err != nil {
-			log.Printf("error reading at %d %s\n", off, err)
-			return err
-		}
+		wg.Add(1)
+		go func(offset int64, length int64) error {
+			defer wg.Done()
 
-		log.Printf("read %d bytes\n", n)
+			log.Printf("reading at %d-%d size %d\n", offset, offset+length, length)
+			b := make([]byte, length)
+			n, err := f.ReadAt(b, offset)
+			if err != nil {
+				log.Printf("error reading at %d %s\n", offset, err)
+				return err
+			}
 
-		n, err = df.WriteAt(b, off)
-		if err != nil {
-			log.Printf("error writing at %d %s\n", off, err)
-			return err
-		}
-		log.Printf("wrote %d bytes\n", n)
+			log.Printf("read %d bytes\n", n)
+
+			n, err = df.WriteAt(b, offset)
+			if err != nil {
+				log.Printf("error writing at %d %s\n", offset, err)
+				return err
+			}
+			log.Printf("wrote %d bytes\n", n)
+			return nil
+		}(off, partSize)
+
 		off = off + partSize
 	}
+
+	wg.Wait()
+	elapsed := time.Since(start)
+	log.Printf("copied file %s in %s\n", f.Name, elapsed)
 
 	return nil
 

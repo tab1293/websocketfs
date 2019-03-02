@@ -1,8 +1,10 @@
+import tus from 'tus-js-client'
+
 var file;
 var ws;
 
-var fin = document.getElementById('fileInput');
-fin.onchange = function(e) {
+var wsFileInput = document.getElementById('wsFileInput');
+wsFileInput.onchange = function(e) {
     var startTime, endTime;
 
     if (!ws) {
@@ -20,40 +22,45 @@ fin.onchange = function(e) {
 
     ws.send(JSON.stringify(fileAnnounce));
 
-    // Get the selected file from the input element
-    // var file = e.target.files[0]
+}
 
-    // // Create a new tus upload
-    // var upload = new tus.Upload(file, {
-    //     endpoint: "http://35.186.181.47:8018/files/",
-    //     retryDelays: [0, 3000, 5000, 10000, 20000],
-    //     metadata: {
-    //         filename: file.name,
-    //         filetype: file.type
-    //     },
-    //     onError: function(error) {
-    //         console.log("Failed because: " + error)
-    //     },
-    //     onProgress: function(bytesUploaded, bytesTotal) {
-    //         var percentage = (bytesUploaded / bytesTotal * 100).toFixed(2)
-    //         console.log(bytesUploaded, bytesTotal, percentage + "%")
-    //     },
-    //     onSuccess: function() {
-    //         endTime = new Date();
-    //         var timeDiff = endTime - startTime; //in ms
-    //         // strip the ms
-    //         timeDiff /= 1000;
+var tusFileInput = document.getElementById('tusFileInput');
+tusFileInput.onchange = function(e) {
+    var startTime, endTime;
+    //Get the selected file from the input element
+    var file = e.target.files[0]
 
-    //         // get seconds
-    //         var seconds = Math.round(timeDiff);
-    //         console.log(seconds + " seconds");
-    //         console.log("Download %s from %s", upload.file.name, upload.url)
-    //     }
-    // })
+    // Create a new tus upload
+    var upload = new tus.Upload(file, {
+        endpoint: "http://35.186.181.47:8018/files/",
+        retryDelays: [0, 3000, 5000, 10000, 20000],
+        metadata: {
+            filename: file.name,
+            filetype: file.type
+        },
+        onError: function(error) {
+            console.log("Failed because: " + error)
+        },
+        onProgress: function(bytesUploaded, bytesTotal) {
+            var percentage = (bytesUploaded / bytesTotal * 100).toFixed(2)
+            console.log(bytesUploaded, bytesTotal, percentage + "%")
+        },
+        onSuccess: function() {
+            endTime = new Date();
+            var timeDiff = endTime - startTime; //in ms
+            // strip the ms
+            timeDiff /= 1000;
 
-    // // Start the upload
-    // startTime = new Date();
-    // upload.start()
+            // get seconds
+            var seconds = Math.round(timeDiff);
+            console.log(seconds + " seconds");
+            console.log("Download %s from %s", upload.file.name, upload.url)
+        }
+    })
+
+    // Start the upload
+    startTime = new Date();
+    upload.start()
 }
 
 // ws = new WebSocket(`ws://35.186.181.47:8015/ws`);
