@@ -66,6 +66,7 @@ tusFileInput.onchange = function(e) {
 ws = new WebSocket(`ws://35.186.181.47:8015/ws`);
 // ws = new WebSocket(`ws://localhost:8015/ws`);
 ws.onmessage = function(e) {
+    console.log('onmessage start')
     var message = JSON.parse(e.data);
 
     if (!file) {
@@ -88,6 +89,7 @@ ws.onmessage = function(e) {
     console.log(`load requested for bytes ${readRequest.offset} - ${readRequest.offset + readRequest.length} with length ${readRequest.length}`)
     var blob = file.slice(readRequest.offset, readRequest.offset + readRequest.length);
     reader.readAsDataURL(blob);
+    console.log('exit onmessage')
 }
 
 ws.onopen = function(e) {

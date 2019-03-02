@@ -81,6 +81,7 @@ func (f *File) ReadAt(p []byte, off int64) (n int, err error) {
 	if err != nil {
 		return n, err
 	}
+	f.wConnMu.Unlock()
 
 	f.DataChans[off] = make(chan []byte)
 	data := <-f.DataChans[off]
