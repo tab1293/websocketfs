@@ -75,6 +75,8 @@ func (f *File) ReadAt(p []byte, off int64) (n int, err error) {
 		Offset: f.off,
 	}
 
+	f.wConnMu.Lock()
+	defer f.wConnMu.Unlock()
 	err = f.conn.WriteJSON(req)
 	if err != nil {
 		return n, err
