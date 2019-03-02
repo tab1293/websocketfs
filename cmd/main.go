@@ -9,8 +9,11 @@ import (
 	"github.com/tab1293/websocketfs"
 )
 
+var NUM_PARTS int
+
 func main() {
 	port := flag.Int("port", 8015, "http port")
+	NUM_PARTS = flag.Int("numparts", 1, "http port")
 	flag.Parse()
 
 	e := echo.New()

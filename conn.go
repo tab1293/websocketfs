@@ -98,6 +98,7 @@ func readLoop(conn *websocket.Conn) {
 				continue
 			}
 
+			log.Printf("decoding read response\n")
 			readResponse := &ReadResponse{}
 			err = json.NewDecoder(messageReader).Decode(readResponse)
 			if err != nil {
@@ -105,13 +106,18 @@ func readLoop(conn *websocket.Conn) {
 				break
 			}
 
+			log.Printf("decoding read string\n")
 			data, err := base64.StdEncoding.DecodeString(readResponse.Data)
 			if err != nil {
 				log.Printf("base64 error %s\n", err)
 				break
 			}
 
-			f.DataChans[readResponse.Offset] <- data
+			log.Printf("reading data in to channel\n")
+			go func() {
+				f.DataChans[readResponse.Offset] <- data
+			}()
+
 		}
 	}
 }
@@ -125,8 +131,8 @@ func CopyFileToDisk(f *File) error {
 	defer df.Close()
 
 	var off int64 = 0
-	numParts := 3
 	start := time.Now()
+	numParts := 20
 
 	var wg sync.WaitGroup
 	for i := 0; i < numParts; i++ {
