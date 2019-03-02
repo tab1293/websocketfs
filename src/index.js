@@ -63,8 +63,8 @@ tusFileInput.onchange = function(e) {
     upload.start()
 }
 
-// ws = new WebSocket(`ws://35.186.181.47:8015/ws`);
-ws = new WebSocket(`ws://localhost:8015/ws`);
+ws = new WebSocket(`ws://35.186.181.47:8015/ws`);
+// ws = new WebSocket(`ws://localhost:8015/ws`);
 ws.onmessage = function(e) {
     var message = JSON.parse(e.data);
 

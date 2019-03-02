@@ -3,6 +3,7 @@ package websocketfs
 import (
 	"fmt"
 	"io"
+	"sync"
 
 	"github.com/gorilla/websocket"
 	uuid "github.com/satori/go.uuid"
@@ -16,6 +17,7 @@ type File struct {
 	LastModified uint64
 	DataChans    map[int64]chan []byte
 	conn         *websocket.Conn
+	wConnMu      sync.Mutex
 	off          int64
 }
 
@@ -30,6 +32,8 @@ func (f *File) Read(p []byte) (n int, err error) {
 		Offset: f.off,
 	}
 
+	f.wConnMu.Lock()
+	defer f.wConnMu.Unlock()
 	err = f.conn.WriteJSON(req)
 	if err != nil {
 		return n, err
