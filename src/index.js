@@ -63,8 +63,8 @@ tusFileInput.onchange = function(e) {
     upload.start()
 }
 
-// ws = new WebSocket(`ws://35.186.181.47:8015/ws`);
-ws = new WebSocket('ws://localhost:8015/fileAnnounce');
+ws = new WebSocket('ws://35.186.181.47:8015/fileAnnounce');
+// ws = new WebSocket('ws://localhost:8015/fileAnnounce');
 ws.onmessage = function(e) {
     console.log('onmessage start', e.data)
     var readRequest = JSON.parse(e.data);
@@ -84,7 +84,8 @@ ws.onmessage = function(e) {
             file_id: readRequest.file_id,
         };
 
-        var readConn = new WebSocket(`ws://localhost:8015/readResponse/${readResponse.file_id}`)
+        // var readConn = new WebSocket(`ws://localhost:8015/readResponse/${readResponse.file_id}`)
+        var readConn = new WebSocket(`ws://35.186.181.47:8015/readResponse/${readResponse.file_id}_${readResponse.offset}`)
         readConn.onopen = function(e) {
             console.log(`sending data ${data.length} ${readResponse.file_id}`);
             readConn.send(JSON.stringify(readResponse));

@@ -72,7 +72,6 @@ func ReadResponseHandler(c echo.Context) error {
 		}
 
 		messageReader := bytes.NewReader(message)
-		log.Printf("decoding read response\n")
 		readResponse := &ReadResponse{}
 		err = json.NewDecoder(messageReader).Decode(readResponse)
 		if err != nil {
@@ -87,14 +86,13 @@ func ReadResponseHandler(c echo.Context) error {
 			continue
 		}
 
-		log.Printf("decoding read string\n")
 		data, err := base64.StdEncoding.DecodeString(readResponse.Data)
 		if err != nil {
 			log.Printf("base64 error %s\n", err)
 			break
 		}
 
-		log.Printf("reading data in to channel\n")
+		log.Printf("reading %d data in to channel\n", readResponse.Offset)
 		go func() {
 			f.DataChans[readResponse.Offset] <- data
 		}()
@@ -239,7 +237,7 @@ func CopyFileToDisk(f *File) error {
 				log.Printf("error writing at %d %s\n", offset, err)
 				return err
 			}
-			log.Printf("wrote %d bytes\n", n)
+			log.Printf("wrote %d-%d size %d\n", offset, offset+length, length)
 			return nil
 		}(off, partSize)
 
