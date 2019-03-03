@@ -63,17 +63,16 @@ tusFileInput.onchange = function(e) {
     upload.start()
 }
 
-ws = new WebSocket(`ws://35.186.181.47:8015/ws`);
-// ws = new WebSocket(`ws://localhost:8015/ws`);
+// ws = new WebSocket(`ws://35.186.181.47:8015/ws`);
+ws = new WebSocket('ws://localhost:8015/fileAnnounce');
 ws.onmessage = function(e) {
-    console.log('onmessage start')
-    var message = JSON.parse(e.data);
+    console.log('onmessage start', e.data)
+    var readRequest = JSON.parse(e.data);
 
     if (!file) {
         return;
     }
 
-    var readRequest = message;
     var reader = new FileReader();
     reader.onloadend = function() {
         var data = reader.result.substring('data:application/octet-stream;base64,'.length);
@@ -82,9 +81,14 @@ ws.onmessage = function(e) {
             file_name: readRequest.file_name,
             data: data,
             offset: readRequest.offset,
+            file_id: readRequest.file_id,
         };
-        console.log(`sending data ${data.length}`);
-        ws.send(JSON.stringify(readResponse));
+
+        var readConn = new WebSocket(`ws://localhost:8015/readResponse/${readResponse.file_id}`)
+        readConn.onopen = function(e) {
+            console.log(`sending data ${data.length} ${readResponse.file_id}`);
+            readConn.send(JSON.stringify(readResponse));
+        }
     }
     console.log(`load requested for bytes ${readRequest.offset} - ${readRequest.offset + readRequest.length} with length ${readRequest.length}`)
     var blob = file.slice(readRequest.offset, readRequest.offset + readRequest.length);

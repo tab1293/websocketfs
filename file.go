@@ -27,6 +27,7 @@ func (f *File) Read(p []byte) (n int, err error) {
 	}
 
 	req := &ReadRequest{
+		FileID: f.ID,
 		Type:   WS_MESSAGE_TYPE_READ_REQUEST,
 		Length: int64(len(p)),
 		Offset: f.off,
@@ -70,6 +71,7 @@ func (f *File) ReadAt(p []byte, off int64) (n int, err error) {
 
 	f.off = off
 	req := &ReadRequest{
+		FileID: f.ID,
 		Type:   WS_MESSAGE_TYPE_READ_REQUEST,
 		Length: int64(len(p)),
 		Offset: f.off,
