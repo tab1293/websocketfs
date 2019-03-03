@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"sync"
 	"time"
 )
 
@@ -31,6 +30,37 @@ func (fs *FileSystem) GetFile(ID string) (*File, error) {
 	return f, nil
 }
 
+type readJob struct {
+	F      *File
+	DF     *os.File
+	Offset int64
+	Length int64
+}
+
+func copyWorker(id int, jobs <-chan *readJob, results chan<- error) {
+	for j := range jobs {
+		log.Printf("reading at %d-%d size %d\n", j.Offset, j.Offset+j.Length, j.Length)
+		b := make([]byte, j.Length)
+		n, err := j.F.ReadAt(b, j.Offset)
+		if err != nil {
+			log.Printf("error reading at %d %s\n", j.Offset, err)
+			results <- err
+			continue
+		}
+
+		n, err = j.DF.WriteAt(b, j.Offset)
+		if err != nil {
+			log.Printf("error writing at %d %s\n", j.Offset, err)
+			results <- err
+			continue
+		}
+
+		log.Printf("wrote %d-%d size %d\n", j.Offset, j.Offset+j.Length, n)
+
+		results <- nil
+	}
+}
+
 func (fs *FileSystem) CopyFileToDisk(f *File) error {
 	log.Printf("creating file %s\n", f.Name)
 	df, err := os.Create(f.Name)
@@ -39,42 +69,43 @@ func (fs *FileSystem) CopyFileToDisk(f *File) error {
 	}
 	defer df.Close()
 
+	var partSize int64 = 1024 * 1024 * 20
 	var off int64 = 0
-	start := time.Now()
-	numParts := 20
-
-	var wg sync.WaitGroup
-	for i := 0; i < numParts; i++ {
-		partSize := f.Size / int64(numParts)
-		if i+1 == numParts {
+	jobs := make([]*readJob, 0)
+	for off < f.Size {
+		if off+partSize > f.Size {
 			partSize = f.Size - off
 		}
 
-		wg.Add(1)
-		go func(offset int64, length int64) error {
-			defer wg.Done()
-
-			log.Printf("reading at %d-%d size %d\n", offset, offset+length, length)
-			b := make([]byte, length)
-			n, err := f.ReadAt(b, offset)
-			if err != nil {
-				log.Printf("error reading at %d %s\n", offset, err)
-				return err
-			}
-
-			n, err = df.WriteAt(b, offset)
-			if err != nil {
-				log.Printf("error writing at %d %s\n", offset, err)
-				return err
-			}
-			log.Printf("wrote %d-%d size %d\n", offset, offset+length, n)
-			return nil
-		}(off, partSize)
-
+		j := &readJob{
+			F:      f,
+			DF:     df,
+			Offset: off,
+			Length: partSize,
+		}
+		jobs = append(jobs, j)
 		off = off + partSize
 	}
 
-	wg.Wait()
+	jobChan := make(chan *readJob, len(jobs))
+	results := make(chan error, len(jobs))
+
+	start := time.Now()
+
+	for w := 0; w < 3; w++ {
+		go copyWorker(w, jobChan, results)
+	}
+
+	for _, j := range jobs {
+		jobChan <- j
+	}
+
+	close(jobChan)
+
+	for r := 0; r < len(jobs); r++ {
+		<-results
+	}
+
 	elapsed := time.Since(start)
 	log.Printf("copied file %s in %s\n", f.Name, elapsed)
 
