@@ -69,12 +69,11 @@ func (f *File) ReadAt(p []byte, off int64) (n int, err error) {
 		return 0, io.EOF
 	}
 
-	f.off = off
 	req := &ReadRequest{
 		FileID: f.ID,
 		Type:   WS_MESSAGE_TYPE_READ_REQUEST,
 		Length: int64(len(p)),
-		Offset: f.off,
+		Offset: off,
 	}
 
 	f.wConnMu.Lock()
@@ -87,7 +86,7 @@ func (f *File) ReadAt(p []byte, off int64) (n int, err error) {
 	f.DataChans[off] = make(chan []byte)
 	data := <-f.DataChans[off]
 	n = copy(p, data)
-	f.off = f.off + int64(n)
+	f.off = off + int64(n)
 	return n, err
 
 }
