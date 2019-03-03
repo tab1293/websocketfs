@@ -32,7 +32,6 @@ func main() {
 
 	e.GET("/fileAnnounce", websocketfs.FileAnnounceHandler)
 	e.GET("/readResponse/*", websocketfs.ReadResponseHandler)
-	e.GET("/ws", websocketfs.EchoWebsocketHandler)
 
 	addr := fmt.Sprintf(":%d", *port)
 	e.Start(addr)
