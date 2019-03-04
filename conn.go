@@ -3,6 +3,7 @@ package websocketfs
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"regexp"
@@ -94,24 +95,27 @@ func ReadResponseHandler(c echo.Context) error {
 		}
 	}
 
-	go func(fileID string, offset int64) {
-		log.Printf("reading message %s at %d\n", fileID, offset)
-		_, data, err := conn.ReadMessage()
-		log.Printf("finished reading message %s at %d\n", fileID, offset)
-		if err != nil {
-			log.Printf("websocket error: %v", err)
-		}
+	log.Printf("getting connection reader for %s at %d\n", fileID, offset)
+	msgType, r, err := conn.NextReader()
+	if err != nil {
+		return err
+	}
 
-		fs := c.Get("fs").(*FileSystem)
-		f, err := fs.GetFile(fileID)
-		if err != nil {
-			log.Printf("%s\n", err)
-		}
+	if msgType != websocket.BinaryMessage {
+		log.Printf("message type is not binary %d\n", msgType)
+		return fmt.Errorf("message type is not binary %d", msgType)
+	}
 
-		log.Printf("reading %d data in to channel\n", offset)
-		f.DataChans[offset] <- data
-		log.Printf("finished reading %d data in to channel\n", offset)
-	}(fileID, offset)
+	fs := c.Get("fs").(*FileSystem)
+	f, err := fs.GetFile(fileID)
+	if err != nil {
+		log.Printf("%s\n", err)
+		return err
+	}
+
+	log.Printf("putting reader at %d data in to channel\n", offset)
+	f.DataChans[offset] <- r
+	log.Printf("finished putting reader at %d data in to channel\n", offset)
 
 	return nil
 }

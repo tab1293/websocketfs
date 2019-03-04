@@ -3,6 +3,7 @@ package websocketfs
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"sync"
 
 	"github.com/gorilla/websocket"
@@ -15,7 +16,7 @@ type File struct {
 	Size         int64
 	Mime         string
 	LastModified uint64
-	DataChans    map[int64]chan []byte
+	DataChans    map[int64]chan io.Reader
 	conn         *websocket.Conn
 	wConnMu      sync.Mutex
 	off          int64
@@ -40,10 +41,16 @@ func (f *File) Read(p []byte) (n int, err error) {
 		return n, err
 	}
 
-	f.DataChans[f.off] = make(chan []byte)
-	data := <-f.DataChans[f.off]
+	f.DataChans[f.off] = make(chan io.Reader)
+	r := <-f.DataChans[f.off]
+	data, err := ioutil.ReadAll(r)
+	if err != nil {
+		return n, err
+	}
+
 	n = copy(p, data)
 	f.off = f.off + int64(n)
+	close(f.DataChans[f.off])
 	return n, err
 }
 
@@ -83,12 +90,17 @@ func (f *File) ReadAt(p []byte, off int64) (n int, err error) {
 	}
 	f.wConnMu.Unlock()
 
-	f.DataChans[off] = make(chan []byte)
-	data := <-f.DataChans[off]
+	f.DataChans[off] = make(chan io.Reader)
+	r := <-f.DataChans[off]
+	data, err := ioutil.ReadAll(r)
+	if err != nil {
+		return n, err
+	}
+
 	n = copy(p, data)
 	f.off = off + int64(n)
+	close(f.DataChans[off])
 	return n, err
-
 }
 
 func NewFile(name string, size int64, conn *websocket.Conn) *File {
@@ -98,6 +110,6 @@ func NewFile(name string, size int64, conn *websocket.Conn) *File {
 		Size:      size,
 		conn:      conn,
 		off:       0,
-		DataChans: make(map[int64](chan []byte)),
+		DataChans: make(map[int64](chan io.Reader)),
 	}
 }
