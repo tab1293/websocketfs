@@ -3,7 +3,6 @@ package websocketfs
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"regexp"
@@ -88,53 +87,31 @@ func ReadResponseHandler(c echo.Context) error {
 	var offset int64
 
 	for _, match := range matches {
-		fmt.Printf("key=%s, value=%s\n", match[1], match[2])
 		fileID = match[1]
 		offset, err = strconv.ParseInt(match[2], 10, 64)
 		if err != nil {
 			return err
 		}
 	}
-	// matches := pat.FindAllStringSubmatch(data, -1) // matches is [][]string
-	// var re = regexp.MustCompile(`(?m)/readResponse/(.*)_(\d*)$`)
-	// for i, match := range re.FindAllStringSubmatch(c.Request().URL.Path, -1) {
-	// log.Printf("found at index %s %d\n", match, i)
-	// }
 
-	for {
+	go func(fileID string, offset int64) {
+		log.Printf("reading message %s at %d\n", fileID, offset)
 		_, data, err := conn.ReadMessage()
+		log.Printf("finished reading message %s at %d\n", fileID, offset)
 		if err != nil {
 			log.Printf("websocket error: %v", err)
-			break
 		}
-
-		// messageReader := bytes.NewReader(message)
-		// readResponse := &ReadResponse{}
-		// err = json.NewDecoder(messageReader).Decode(readResponse)
-		// if err != nil {
-		// 	log.Printf("decode error: %v", err)
-		// 	break
-		// }
 
 		fs := c.Get("fs").(*FileSystem)
 		f, err := fs.GetFile(fileID)
 		if err != nil {
 			log.Printf("%s\n", err)
-			continue
 		}
 
-		// data, err := base64.StdEncoding.DecodeString(readResponse.Data)
-		// if err != nil {
-		// 	log.Printf("base64 error %s\n", err)
-		// 	break
-		// }
-
 		log.Printf("reading %d data in to channel\n", offset)
-		go func() {
-			f.DataChans[offset] <- data
-		}()
-
-	}
+		f.DataChans[offset] <- data
+		log.Printf("finished reading %d data in to channel\n", offset)
+	}(fileID, offset)
 
 	return nil
 }
