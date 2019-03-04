@@ -66,7 +66,6 @@ tusFileInput.onchange = function(e) {
 // ws = new WebSocket('ws://35.186.181.47:8015/fileAnnounce');
 ws = new WebSocket('ws://localhost:8015/fileAnnounce');
 ws.onmessage = function(e) {
-    console.log('onmessage start', e.data)
     var readRequest = JSON.parse(e.data);
 
     if (!file) {
@@ -75,26 +74,19 @@ ws.onmessage = function(e) {
 
     var reader = new FileReader();
     reader.onloadend = function() {
-        var data = reader.result.substring('data:application/octet-stream;base64,'.length);
-        var readResponse = {
-            type: 'readResponse',
-            file_name: readRequest.file_name,
-            data: data,
-            offset: readRequest.offset,
-            file_id: readRequest.file_id,
-        };
+        var data = reader.result;
 
-        var readConn = new WebSocket(`ws://localhost:8015/readResponse/${readResponse.file_id}_${readResponse.offset}`)
-        // var readConn = new WebSocket(`ws://35.186.181.47:8015/readResponse/${readResponse.file_id}_${readResponse.offset}`)
+        var readConn = new WebSocket(`ws://localhost:8015/readResponse/${readRequest.file_id}_${readRequest.offset}`)
+        // var readConn = new WebSocket(`ws://35.186.181.47:8015/readResponse/${readRequest.file_id}_${readRequest.offset}`)
+        readConn.binaryType = "arraybuffer";
         readConn.onopen = function(e) {
-            console.log(`sending data ${data.length} ${readResponse.file_id}`);
-            readConn.send(JSON.stringify(readResponse));
+            console.log(`sending data ${data.length}`);
+            readConn.send(data);
         }
     }
     console.log(`load requested for bytes ${readRequest.offset} - ${readRequest.offset + readRequest.length} with length ${readRequest.length}`)
     var blob = file.slice(readRequest.offset, readRequest.offset + readRequest.length);
-    reader.readAsDataURL(blob);
-    console.log('exit onmessage')
+    reader.readAsArrayBuffer(blob);
 }
 
 ws.onopen = function(e) {

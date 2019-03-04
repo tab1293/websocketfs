@@ -2,10 +2,12 @@ package websocketfs
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
+	"regexp"
+	"strconv"
 
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo"
@@ -32,7 +34,7 @@ type FileAnnounce struct {
 
 type ReadResponse struct {
 	Offset int64  `json:"offset"`
-	Data   string `json:"data"`
+	Data   []byte `json:"data"`
 	FileID string `json:"file_id"`
 }
 
@@ -80,37 +82,56 @@ func ReadResponseHandler(c echo.Context) error {
 		return err
 	}
 
+	re := regexp.MustCompile("/readResponse/(.*)_(.*)$")
+	matches := re.FindAllStringSubmatch(c.Request().URL.Path, -1)
+	var fileID string
+	var offset int64
+
+	for _, match := range matches {
+		fmt.Printf("key=%s, value=%s\n", match[1], match[2])
+		fileID = match[1]
+		offset, err = strconv.ParseInt(match[2], 10, 64)
+		if err != nil {
+			return err
+		}
+	}
+	// matches := pat.FindAllStringSubmatch(data, -1) // matches is [][]string
+	// var re = regexp.MustCompile(`(?m)/readResponse/(.*)_(\d*)$`)
+	// for i, match := range re.FindAllStringSubmatch(c.Request().URL.Path, -1) {
+	// log.Printf("found at index %s %d\n", match, i)
+	// }
+
 	for {
-		_, message, err := conn.ReadMessage()
+		_, data, err := conn.ReadMessage()
 		if err != nil {
 			log.Printf("websocket error: %v", err)
 			break
 		}
 
-		messageReader := bytes.NewReader(message)
-		readResponse := &ReadResponse{}
-		err = json.NewDecoder(messageReader).Decode(readResponse)
-		if err != nil {
-			log.Printf("decode error: %v", err)
-			break
-		}
+		// messageReader := bytes.NewReader(message)
+		// readResponse := &ReadResponse{}
+		// err = json.NewDecoder(messageReader).Decode(readResponse)
+		// if err != nil {
+		// 	log.Printf("decode error: %v", err)
+		// 	break
+		// }
 
 		fs := c.Get("fs").(*FileSystem)
-		f, err := fs.GetFile(readResponse.FileID)
+		f, err := fs.GetFile(fileID)
 		if err != nil {
 			log.Printf("%s\n", err)
 			continue
 		}
 
-		data, err := base64.StdEncoding.DecodeString(readResponse.Data)
-		if err != nil {
-			log.Printf("base64 error %s\n", err)
-			break
-		}
+		// data, err := base64.StdEncoding.DecodeString(readResponse.Data)
+		// if err != nil {
+		// 	log.Printf("base64 error %s\n", err)
+		// 	break
+		// }
 
-		log.Printf("reading %d data in to channel\n", readResponse.Offset)
+		log.Printf("reading %d data in to channel\n", offset)
 		go func() {
-			f.DataChans[readResponse.Offset] <- data
+			f.DataChans[offset] <- data
 		}()
 
 	}
